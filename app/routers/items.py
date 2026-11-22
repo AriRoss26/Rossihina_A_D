@@ -8,7 +8,17 @@ class Item(BaseModel):
     price: float = Field(..., gt=0, title="Цена", example=199.99)
     is_offer: bool | None = Field(None, title="Акционный товар")
 
-fake_db = {1: {"name": "Foo", "price": 50.2}}
+fake_db = {1: {"name": "Foo", "price": 50.2, "is_offer": None}}
+
+@router.put("/{item_id}", response_model=Item)
+def update_item(
+    item: Item,
+    item_id: int = Path(..., title="ID товара", ge=1),
+):
+    if item_id not in fake_db:
+        raise HTTPException(status_code=404, detail="Item not found")
+    fake_db[item_id] = item.model_dump()
+    return item
 
 @router.get("/{item_id}")
 def read_item(
