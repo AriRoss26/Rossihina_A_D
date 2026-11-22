@@ -1,6 +1,8 @@
+import logging
 from fastapi import APIRouter, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/items", tags=["items"])
 
 class Item(BaseModel):
@@ -16,18 +18,22 @@ def read_item(
     q: str | None = Query(None, title="Поисковый запрос", max_length=50),
 ):
     if item_id not in fake_db:
+        logger.warning(f"Товар с ID={item_id} не найден")
         raise HTTPException(status_code=404, detail="Item not found")
+    logger.info(f"Получен товар с ID={item_id}")
     return {"item_id": item_id, "item": fake_db[item_id], "q": q}
 
 @router.post("/", response_model=Item)
 def create_item(item: Item):
     for existing_item in fake_db.values():
         if existing_item["name"].lower() == item.name.lower():
+            logger.warning(f"Попытка создать дубликат товара: {item.name}")
             raise HTTPException(
                 status_code=400, detail="Товар с таким именем уже существует"
             )
     new_id = max(fake_db.keys(), default=0) + 1
     fake_db[new_id] = item.model_dump()
+    logger.info(f"Создан новый товар ID={new_id}: {item.name}")
     return item
 
 @router.put("/{item_id}", response_model=Item)
@@ -36,11 +42,16 @@ def update_item(
     item_id: int = Path(..., title="ID товара", ge=1),
 ):
     if item_id not in fake_db:
+        logger.warning(f"Попытка обновить несуществующий товар ID={item_id}")
         raise HTTPException(status_code=404, detail="Item not found")
+
     for existing_id, existing_item in fake_db.items():
         if existing_id != item_id and existing_item["name"].lower() == item.name.lower():
+            logger.warning(f"Конфликт уникальности имени при обновлении ID={item_id}: {item.name}")
             raise HTTPException(
                 status_code=400, detail="Товар с таким именем уже существует"
             )
+
     fake_db[item_id] = item.model_dump()
+    logger.info(f"Обновлён товар ID={item_id}: {item.name}")
     return item
