@@ -1,23 +1,29 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from app.config import Settings
 from app.routers import items
 
-app = FastAPI()
-@app.get("/")
-def read_root():
-    return {"message": "Hello, FastAPI!"}
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str | None = None):
-    return {"item_id": item_id, "q": q}
-class Item(BaseModel):
-    name: str
-    price: float
-    is_offer: bool | None = None
-@app.post("/items/", response_model=Item)
-def create_item(item: Item):
-    return item
-app = FastAPI()
+settings = Settings()
+
+app = FastAPI(
+    title=settings.app_name,
+    description="Лабораторная работа по FastAPI",
+    version="1.0.0",
+    contact={
+        "name": "Студент",
+        "email": settings.admin_email,
+    },
+)
+
 app.include_router(items.router)
+
 @app.get("/")
 def read_root():
     return {"message": "Hello, FastAPI!"}
+
+@app.get("/info")
+def get_info():
+    return {
+        "app_name": settings.app_name,
+        "admin_email": settings.admin_email,
+        "items_per_page": settings.items_per_page,
+    }
